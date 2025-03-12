@@ -2015,7 +2015,7 @@ all(colnames(CountsFinalC1) == rownames(FinalMetaC1))
 #CollecTRI is a comprehensie resource containing a curated collection of TFs and their transcriptional targets compiled from 12 different resources 
 #Retrieve the human version from OmniPath 
 
-Network <- readRDS("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/NatureRevision/ForCodeCapsule2//TFnetwork.rds")
+Network <- get_collectri(organism = "human", split_complexes = F)
 
 #Filter for transcription factors expressed in CD8+ T cells 
 
