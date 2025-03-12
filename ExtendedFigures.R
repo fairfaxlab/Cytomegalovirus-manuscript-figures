@@ -17,7 +17,7 @@ library(limma)
 library(ggrepel)
 library(pheatmap)
 library(RColorBrewer)
-library(org.Hs.eg.db) #package version is 3.16.0 due to R version on code ocean being 4.2- this impacts TF analysis outcomes 
+library(org.Hs.eg.db) 
 library(AnnotationDbi)
 library(gplots)
 library(ashr)
@@ -38,6 +38,9 @@ library(MatchIt)
 library(coin)
 library(ggridges)
 library(data.table)
+library(Seurat)
+library(grDevices)
+library(circlize)
 
 
 ##LOAD DATA---------------------------------------------------------------------
@@ -48,7 +51,10 @@ tcr_processed <- readRDS("/data/TCRdata.rds")
 
 #CMV data 
 
-cmv <- read.delim("/data/CMVdata.txt",sep = "\t")
+cmv <- fread("/data/CMVdata.txt", sep = "\t")
+
+cmv <- cmv %>% 
+  separate(`PtName ResultTrans`, c("PtName", "ResultTrans"), sep = " ")
 
 #Clinical data
 
@@ -70,15 +76,13 @@ flow <- readRDS("/data/FlowData.rds")
 
 tox <- read.csv("/data/AIpatient411complete.csv")
 
-tox <- tox[1:772,]
-
 #Haematological data 
 
 bloods <- read.csv("/data/HaemData.csv")
 
 #UK Biobank data 
 
-Biobank <- load("/data/UKB.Rd")
+Biobank <- readRDS("/data/UKB.Rds")
 
 #Single cell data for CD8+ T cells  
 
@@ -183,7 +187,7 @@ NLR <- left_join(surv_last_update, bloods)
 
 #Perform a Cox regression for overall survival, correcting for age, sex, treatment, and BRAF status
 
-NLRcox <- coxph(Surv(months_death, death_status) ~ age + sex + combination + `BRAF_status` + `NLR`,
+NLRcox <- coxph(Surv(months_death, death_status) ~ age + sex + combination + `BRAF_status` + `NLR_pre`,
                   data = subset(NLR, Rx != "Ipilimumab" & Rx != "RelatNivo"))
 NLRsummary <- summary(NLRcox)
 coefsNLR <- NLRsummary$coef[, 1]
@@ -294,7 +298,7 @@ rownames(FilteredMeta) <- FilteredMeta$sample
 #Subset counts data for baseline CD8+ T cell samples (C1_CD8_None)
 #Add Ensembl ids as rownames in this new dataset
 
-rownames(counts) <- counts$Gene
+#rownames(counts) <- counts$Gene
 SubsetCounts <- counts %>%
   dplyr::select(matches(c("C1_CD8_None")))
 rownames(SubsetCounts) <- rownames(counts)
@@ -689,48 +693,53 @@ ggsave("/results/FigS2b.pdf", plot = x, width = 8, height = 8)
 
 #Determine total TRB read counts for each individual 
 
-#Large clones were previously associated with 
+#Large clones were previously associated with improved survival
 
-cloneCounts <- tcr_processed %>%
-  filter(grepl(paste("TRB", sep = "|"), bestVHit)) %>% 
-  group_by(ID) %>%
-  summarise(total_cell_count = sum(cloneCount))
+#For MiXCR pre-processing
 
-#Filter for C2 beta chains
-
-BetaSizeC2 <- tcr_processed %>% 
-  filter(grepl(paste("TRB", sep = "|"), bestVHit)) %>% 
-  filter(grepl("_C2_", ID))
-
-#Join total counts with filtered counts 
-
-BetaSizeC2 <- left_join(BetaSizeC2, cloneCounts)
-
-#Determine the number and proportion of clones by size per individual at day 21
-
-BetaSizeC2 <- BetaSizeC2 %>% 
-  mutate(repertoire_occupancy = cloneCount/total_cell_count * 100) %>% 
-  mutate(size = ifelse(repertoire_occupancy > 0.5, "large", 
-                       ifelse(repertoire_occupancy <= 0.5, "intermediate", NA))) %>% 
-  group_by(sample) %>% 
-  summarise(`> 0.5%` = sum(grepl("large", size)),
-            `< 0.5%` = sum(grepl("intermediate", size)))
-
-#join with metadata 
-
-BetaSizeC2 <- left_join(BetaSizeC2, mmdata)
-
-#Pivot each size bin into a single variable 
-
-BetaSizeC2long <- BetaSizeC2 %>% 
-  filter(sample != "250_C2") %>% 
-  filter(!grepl("Adj", Rx)) %>% 
-  filter(cancer == "Melanoma") %>% 
-  mutate(combination = ifelse(Rx == "IpiNivo", "cICB", "sICB")) %>% 
-  pivot_longer(names_to = "size", cols = c(`> 0.5%`, `< 0.5%`), values_to = "size_counts")
+# cloneCounts <- tcr_processed %>%
+#   filter(grepl(paste("TRB", sep = "|"), bestVHit)) %>% 
+#   group_by(ID) %>%
+#   summarise(total_cell_count = sum(cloneCount))
+# 
+# #Filter for C2 beta chains
+# 
+# BetaSizeC2 <- tcr_processed %>% 
+#   filter(grepl(paste("TRB", sep = "|"), bestVHit)) %>% 
+#   filter(grepl("_C2_", ID))
+# 
+# #Join total counts with filtered counts 
+# 
+# BetaSizeC2 <- left_join(BetaSizeC2, cloneCounts)
+# 
+# #Determine the number and proportion of clones by size per individual at day 21
+# 
+# BetaSizeC2 <- BetaSizeC2 %>% 
+#   mutate(repertoire_occupancy = cloneCount/total_cell_count * 100) %>% 
+#   mutate(size = ifelse(repertoire_occupancy > 0.5, "large", 
+#                        ifelse(repertoire_occupancy <= 0.5, "intermediate", NA))) %>% 
+#   group_by(sample) %>% 
+#   summarise(`> 0.5%` = sum(grepl("large", size)),
+#             `< 0.5%` = sum(grepl("intermediate", size)))
+# 
+# #join with metadata 
+# 
+# BetaSizeC2 <- left_join(BetaSizeC2, mmdata)
+# 
+# #Pivot each size bin into a single variable 
+# 
+# BetaSizeC2long <- BetaSizeC2 %>% 
+#   filter(sample != "250_C2") %>% 
+#   filter(!grepl("Adj", Rx)) %>% 
+#   filter(cancer == "Melanoma") %>% 
+#   mutate(combination = ifelse(Rx == "IpiNivo", "cICB", "sICB")) %>% 
+#   pivot_longer(names_to = "size", cols = c(`> 0.5%`, `< 0.5%`), values_to = "size_counts")
 
 #Relevel factor 
 
+BetaSizeC2long <- tcr_processed
+BetaSizeC2long$sample <- gsub("_CD8_None", "", BetaSizeC2long$sample)
+BetaSizeC2long <- left_join(BetaSizeC2long, mmdata)
 BetaSizeC2long$size <- factor(BetaSizeC2long$size, levels = c("< 0.5%", "> 0.5%"))
 
 #Join with CMV score 
@@ -818,7 +827,7 @@ rownames(FilteredMeta) <- FilteredMeta$sample
 
 SubsetCounts <- counts %>% 
   dplyr::select(matches(c("C2_CD8_None", "C1_CD8_None")))
-rownames(SubsetCounts) <- counts$Gene
+rownames(SubsetCounts) <- rownames(counts)
 
 #Metadata and counts data do not have matching samples. Match them and subset the matches 
 #see if the counts column names are in the rownames of the metadata
@@ -830,7 +839,7 @@ FilteredMeta <- subset(FilteredMeta, (sample %in% Matching))
 rownames(FilteredMeta) <- FilteredMeta$sample
 SubsetCounts <- SubsetCounts %>% 
   dplyr::select(contains(Matching))
-rownames(SubsetCounts) <- counts$Gene
+#rownames(SubsetCounts) <- counts$Gene
 
 #Not only do all the samples have to match in the metadata and the counts, but they have to be in the same order. Reorder the counts data 
 #Select metadata columns of interest
@@ -931,10 +940,9 @@ tox2 <- tox %>%
   mutate(Grade3 = ifelse(grade > 2, "Yes", NA)) %>% 
   mutate(Grade1_2 = ifelse(grade == 1 | grade == 2, "Yes", NA)) %>% 
   pivot_wider(names_from = organ, values_from = AI) %>% 
-  mutate(across(18:45, ~ ifelse(. == "1", "Yes", NA))) %>% 
+  mutate(across(15:42, ~ ifelse(. == "1", "Yes", NA))) %>% 
   mutate(dermatitis = skin) %>% 
-  mutate(patient = as.character(ID)) %>% 
-  dplyr::select(-notes)
+  mutate(patient = as.character(ID))
 
 temp <- surv_last_update %>% 
   filter(Rx != "Ipilimumab" & Rx != "RelatNivo") %>% 
@@ -1389,10 +1397,10 @@ rownames(FilteredMeta) <- FilteredMeta$sample
 #Subset counts data for baseline CD8+ T cell samples (C1_CD8_None)
 #Add Ensembl ids as rownames in this new dataset
 
-rownames(counts) <- counts$Gene
+#rownames(counts) <- counts$Gene
 SubsetCounts <- counts %>%
   dplyr::select(matches(c("C1_CD8_None")))
-rownames(SubsetCounts) <- counts$Gene
+#rownames(SubsetCounts) <- counts$Gene
 
 #Metadata and counts data do not have matching samples. Match them and subset the matches 
 #Ensure that the counts column names are in the rownames of the metadata
@@ -1441,7 +1449,7 @@ all(colnames(CountsFinalC1) == rownames(FinalMetaC1))
 #CollecTRI is a comprehensie resource containing a curated collection of TFs and their transcriptional targets compiled from 12 different resources 
 #Retrieve the human version from OmniPath 
 
-Network <- readRDS("/data/TFnetwork.rds")
+Network <- get_collectri(organism = "human", split_complexes = F)
 
 #Filter for transcription factors expressed in CD8+ T cells 
 
@@ -1742,7 +1750,7 @@ rownames(FilteredMeta) <- FilteredMeta$sample
 #Subset counts data for baseline CD8 T cell samples (C1_CD8_None format)
 #Add Ensembl ids as rownames in this new dataset- still unsure why R always removes rownames when you modify a dataframe
 
-rownames(counts) <- counts$Gene
+#rownames(counts) <- counts$Gene
 SubsetCounts <- counts %>%
   dplyr::select(matches(c("C1_CD8_None","C2_CD8_None")))
 rownames(SubsetCounts) <- rownames(counts)
@@ -1826,48 +1834,55 @@ TbetClones <- FinalMeta %>%
 
 #Determine total read counts for each individual 
 
-cloneCounts <- tcr_processed %>%
-  filter(grepl(paste("TRB", sep = "|"), bestVHit)) %>% 
-  group_by(ID) %>%
-  filter(sample != "250_C2") %>% 
-  summarise(total_cell_count = sum(cloneCount))
+#Preprocessing MiXCR data 
 
-#Filter for cycle 2 beta chains
-
-BetaSizeC2 <- tcr_processed %>% 
-  filter(grepl(paste("TRB", sep = "|"), bestVHit)) %>% 
-  filter(sample != "250_C2") %>% 
-  filter(grepl("_C2_", ID))
-
-#Join total counts with filtered counts 
-
-BetaSizeC2 <- left_join(BetaSizeC2, cloneCounts)
-
-#Determine the number and proportion of clones by size per individual at day 21
-
-BetaSizeC2 <- BetaSizeC2 %>% 
-  mutate(repertoire_occupancy = cloneCount/total_cell_count * 100) %>% 
-  mutate(size = ifelse(repertoire_occupancy > 0.5, "large", 
-                       ifelse(repertoire_occupancy <= 0.5, "intermediate",  NA))) %>% 
-  group_by(sample) %>% 
-  summarise(`> 0.5%` = sum(grepl("large", size)),
-            `< 0.5%` = sum(grepl("intermediate", size))) %>% 
-  unique()
-
-#join with metadata 
-
-BetaSizeC2 <- left_join(BetaSizeC2, mmdata)
-
-BetaSizeC2long <- BetaSizeC2 %>% 
-  filter(!grepl("Adj", Rx)) %>% 
-  filter(cancer == "Melanoma") %>% 
-  mutate(combination = ifelse(Rx == "IpiNivo", "cICB", "sICB")) %>% 
-  pivot_longer(names_to = "size", cols = c(`> 0.5%`, `< 0.5%`), values_to = "size_counts") %>% 
-  dplyr::select(size, size_counts, cancer, Rx, combination, patient, sample) %>% 
-  mutate(sample = paste0(sample, "_CD8_None"))
+# cloneCounts <- tcr_processed %>%
+#   filter(grepl(paste("TRB", sep = "|"), bestVHit)) %>% 
+#   group_by(ID) %>%
+#   filter(sample != "250_C2") %>% 
+#   summarise(total_cell_count = sum(cloneCount))
+# 
+# #Filter for cycle 2 beta chains
+# 
+# BetaSizeC2 <- tcr_processed %>% 
+#   filter(grepl(paste("TRB", sep = "|"), bestVHit)) %>% 
+#   filter(sample != "250_C2") %>% 
+#   filter(grepl("_C2_", ID))
+# 
+# #Join total counts with filtered counts 
+# 
+# BetaSizeC2 <- left_join(BetaSizeC2, cloneCounts)
+# 
+# #Determine the number and proportion of clones by size per individual at day 21
+# 
+# BetaSizeC2 <- BetaSizeC2 %>% 
+#   mutate(repertoire_occupancy = cloneCount/total_cell_count * 100) %>% 
+#   mutate(size = ifelse(repertoire_occupancy > 0.5, "large", 
+#                        ifelse(repertoire_occupancy <= 0.5, "intermediate",  NA))) %>% 
+#   group_by(sample) %>% 
+#   summarise(`> 0.5%` = sum(grepl("large", size)),
+#             `< 0.5%` = sum(grepl("intermediate", size))) %>% 
+#   unique()
+# 
+# #join with metadata 
+# 
+# BetaSizeC2 <- left_join(BetaSizeC2, mmdata)
+# 
+# BetaSizeC2long <- BetaSizeC2 %>% 
+#   filter(!grepl("Adj", Rx)) %>% 
+#   filter(cancer == "Melanoma") %>% 
+#   mutate(combination = ifelse(Rx == "IpiNivo", "cICB", "sICB")) %>% 
+#   pivot_longer(names_to = "size", cols = c(`> 0.5%`, `< 0.5%`), values_to = "size_counts") %>% 
+#   dplyr::select(size, size_counts, cancer, Rx, combination, patient, sample) %>% 
+#   mutate(sample = paste0(sample, "_CD8_None"))
 
 #Relevel factor 
 
+BetaSizeC2long <- tcr_processed
+BetaSizeC2long$sample <- gsub("_CD8_None", "", BetaSizeC2long$sample)
+BetaSizeC2long <- left_join(BetaSizeC2long, mmdata)
+BetaSizeC2long <- BetaSizeC2long %>% 
+  mutate(sample = paste0(sample, "_CD8_None"))
 BetaSizeC2long$size <- factor(BetaSizeC2long$size, levels = c("< 0.5%", "> 0.5%"))
 
 #Join with TBX21 data 
@@ -1906,7 +1921,7 @@ ggsave("/results/FigS4c.pdf", plot = x, width = 8, height = 8)
 
 #CMV-reactive clones and TBX21 
 
-#samples from 23 patients with metastatic melanoma
+#samples from 18 patients with metastatic melanoma
 
 cd8@meta.data <- cd8@meta.data %>% 
   mutate(Response = ifelse(progression == 1 & months_progression < 36, "Progressive disease",
@@ -1921,36 +1936,7 @@ cd8@meta.data <- cd8@meta.data %>%
                                                      ifelse(celltype.l2 == "CD8.Naive", "Naive",
                                                             ifelse(celltype.l2 == "dnT", "DN", 
                                                                    ifelse(celltype.l2 == "gdT", "GD", NA)))))))))
-
-
-################################################################################
-
-#Plot a UMAP of cell subsets in the single cell data- Nature Medicine Review 
-
-SeuratMeta <- read.csv("/ceph/project/fairfaxlab/gmilotay/scRNAseq/data/scvi_umap_embeddings.csv")
-
-#Subset the barcodes and UMAP coordinates 
-
-SeuratMeta <- SeuratMeta %>% 
-  select(barcode_pool, X_umap_1, X_umap_2)
-
-cd8@meta.data <- left_join(cd8@meta.data, SeuratMeta)
-
-#Subset sICB patients used in analysis 
-
-rownames(cd8@meta.data) <- cd8$barcode_pool
-
-sICB <- subset(cd8, subset = Rx != "IpiNivo")
-
-sICB <- subset(sICB, subset = cycle %in% c("C1", "C2"))
-
-#Plot UMAP 
-
-UMAP <- as.matrix(sICB@meta.data[, c("X_umap_1", "X_umap_2")])
-
-#Add UMAP coordinates to the embeddings slot
-
-sICB[["umap"]] <- CreateDimReducObject(embeddings = UMAP, key = "UMAP_", assay = DefaultAssay(sICB))
+sICB <- cd8
 
 ################################################################################
 #FIGURE S4d- Single Cell UMAP
@@ -1987,7 +1973,7 @@ TopMarkers <- DEGs %>%
   group_by(cluster) %>%
   top_n(5, wt = avg_log2FC) %>%  
   arrange(cluster, desc(avg_log2FC)) %>% 
-  select(gene) 
+  dplyr::select(gene) 
 
 #Extract scaled expression of marker genes 
 
@@ -2001,7 +1987,7 @@ Data$ID <- rownames(Data)
 sICB$ID <- rownames(sICB@meta.data)
 
 Subsets <- sICB@meta.data %>% 
-  select(ID, Subset)
+  dplyr::select(ID, Subset)
 
 Meta <- left_join(Subsets, Data)
 
@@ -2284,33 +2270,51 @@ AllCancer <- SurvivalAllCancer %>%
   filter(!is.na(age))
 
 #Prepare Biobank data 
+# 
+# Biobank <- allmat %>% 
+#   mutate(cmv = ifelse(cmv == 2, "CMV+", 
+#                       ifelse(cmv == 1, "CMV-", NA)))
+# 
+# Biobank <- Biobank %>% 
+#   dplyr::select(-sex) %>% 
+#   mutate(CMV = ifelse(cmv == "CMV+", 1, 0)) %>% 
+#   mutate(cancer = "False") %>% 
+#   mutate(status = "Healthy") %>% 
+#   mutate(Status = "Healthy") %>% 
+#   dplyr::select(-cmv) %>% 
+#   filter(!is.na(age))
 
-Biobank <- allmat %>% 
-  mutate(cmv = ifelse(cmv == 2, "CMV+", 
-                      ifelse(cmv == 1, "CMV-", NA)))
+AllCancer2 <- AllCancer %>% 
+  filter(age >= 40 & age <= 70) %>% 
+  mutate(HealthyWT = ifelse(status == "Healthy", "Healthy",
+                            ifelse(status == "Mel-Adj", "Adjuvant Melanoma",
+                                   ifelse(status == "MM-WT", "Wild-type Metastatic",
+                                          ifelse(status == "MM-Mut", "Mutant Metastatic",NA))))) %>% 
+  group_by(CMV, HealthyWT) %>% 
+  summarise(Freq = n()) %>%
+  ungroup() %>% 
+  filter(!is.na(CMV)) %>% 
+  mutate(cmv = ifelse(CMV == 1, "CMV+", "CMV-")) %>% 
+  dplyr::select(cmv, HealthyWT, Freq, -CMV) %>% 
+  mutate(centre = "None")
 
-Biobank <- Biobank %>% 
-  dplyr::select(-sex) %>% 
-  mutate(CMV = ifelse(cmv == "CMV+", 1, 0)) %>% 
-  mutate(cancer = "False") %>% 
-  mutate(status = "Healthy") %>% 
-  mutate(Status = "Healthy") %>% 
-  dplyr::select(-cmv) %>% 
-  filter(!is.na(age))
+Biobank$HealthyWT <- "Healthy"
 
 #Bind healthy donors to cancer cohort 
 
-HealthyCancerCombined <- rbind(AllCancer, Biobank)
+HealthyCancerCombined <- rbind(AllCancer2, Biobank)
 
-#Remove anyone above the age of 70 or below the age of 40 
-
-MetastaticHealthy <- HealthyCancerCombined %>% 
-  filter(age >= 40 & age <= 70) %>% 
-  filter(Status %in% c("Healthy", "Metastatic Melanoma")) 
+MetastaticHealthy <- HealthyCancerCombined
+MetastaticHealthy$Status <- "Metastatic"
+MetastaticHealthy <- MetastaticHealthy %>% 
+  mutate(Status = ifelse(HealthyWT == "Adjuvant Melanoma", "Adj",
+                         ifelse(HealthyWT == "Healthy", "Healthy", Status))) %>% 
+  mutate(Status = ifelse(is.na(Status), "Metastatic", Status)) %>% 
+  filter(Status %in% c("Healthy", "Metastatic")) 
 
 assessmentCentres <- MetastaticHealthy %>% 
-  filter(assessment_centre != "None")
-assessmentCentres <- unique(assessmentCentres$assessment_centre)
+  filter(centre != "None")
+assessmentCentres <- unique(assessmentCentres$centre)
 
 #Initialize results dataframe
 
@@ -2326,16 +2330,20 @@ results <- data.frame(
 
 for (center in assessmentCentres) {
   center_data <- MetastaticHealthy %>% 
-    filter(assessment_centre == center | assessment_centre == "None")
+    filter(centre == center | centre == "None")
   
   #Fisher's test for CMV status in metastatic melanoma vs healthy donors
   
-  fisher_test <- fisher.test(center_data$CMV, center_data$assessment_centre)
+  #fisher_test <- fisher.test(center_data$CMV, center_data$assessment_centre)
+  table_matrix <- xtabs(Freq ~ cmv + centre, data = center_data)
+  
+  #fisherMel <- fisher.test(AllMetaMel$CMV, AllMetaMel$Status)
+  fisher_test <- fisher.test(table_matrix)
   odds_ratio <- fisher_test$estimate
   conf_int <- fisher_test$conf.int
   p_value <- fisher_test$p.value
   number <- center_data %>% 
-    filter(assessment_centre == center) 
+    filter(centre == center) 
   number <- nrow(number)
   
   #Store the results
