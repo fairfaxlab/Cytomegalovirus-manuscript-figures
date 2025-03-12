@@ -48,50 +48,50 @@ library(data.table)
 
 #bulk TCR data
 
-tcr_processed <- readRDS("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/TCRdata.rds")
+tcr_processed <- readRDS("/data/TCRdata.rds")
 
 #CMV data 
 
-cmv <- fread("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/CMVdata.txt", sep = "\t")
+cmv <- fread("/data/CMVdata.txt", sep = "\t")
 
 cmv <- cmv %>% 
   separate(`PtName ResultTrans`, c("PtName", "ResultTrans"), sep = " ")
 
 #Clinical data
 
-clinicalData <- read.csv("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/clinicalData.csv")
+clinicalData <- read.csv("/data/clinicalData.csv")
 
 #Bulk RNA-seq counts data 
 
-counts <- readRDS("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/BulkData.rds")
+counts <- readRDS("/data/BulkData.rds")
 
 #Bulk RNA-seq batch data
 
-batch_data <- read.csv("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/BatchData.csv")
+batch_data <- read.csv("/data/BatchData.csv")
 
 #T-cell flow data
 
-flow <- readRDS("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/FlowData.rds")
+flow <- readRDS("/data/FlowData.rds")
 
 #Toxicity metadata 
 
-tox <- read.csv("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/AIpatient411complete.csv")
+tox <- read.csv("/data/AIpatient411complete.csv")
 
 #Haematological data 
 
-bloods <- read.csv("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/HaemData.csv")
+bloods <- read.csv("/data/HaemData.csv")
 
 #UK Biobank data 
 
-Biobank <- readRDS("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/UKB.Rds")
+Biobank <- readRDS("/data/UKB.Rds")
 
 #Single cell data for CD8+ T cells  
 
-cd8 <- readRDS("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/scData.rds")
+cd8 <- readRDS("/data/scData.rds")
 
 #Gene list used for calculation of cytotoxicity score- same as used in Watson et al. 2021 
 
-cytotoxicity <- read.csv("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/BulkScores.csv")
+cytotoxicity <- read.csv("/data/BulkScores.csv")
 
 clinicalData <- clinicalData %>%
   mutate(PtName = as.character(ID)) %>% 
