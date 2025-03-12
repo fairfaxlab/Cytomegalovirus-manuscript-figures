@@ -9,7 +9,7 @@
 ##START-------------------------------------------------------------------------
 ##LOAD PACKAGES-----------------------------------------------------------------
 
-install.packages("survminer")
+#install.packages("survminer")
 library(tidyverse)
 library(ggpubr)
 library(rstatix)
@@ -20,7 +20,7 @@ library(limma)
 library(ggrepel)
 library(pheatmap)
 library(RColorBrewer)
-library(org.Hs.eg.db) #version is 3.16 on Code ocean and not 3.19.1 due to R version being 4.2- this influences the outcomes of TF analysis
+library(org.Hs.eg.db) 
 library(AnnotationDbi)
 library(gplots)
 library(ashr)
@@ -48,48 +48,50 @@ library(data.table)
 
 #bulk TCR data
 
-tcr_processed <- readRDS("/data/TCRdata.rds")
+tcr_processed <- readRDS("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/TCRdata.rds")
 
 #CMV data 
 
-cmv <- read.delim("/data/CMVdata.txt",sep = "\t")
+cmv <- fread("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/CMVdata.txt", sep = "\t")
+
+cmv <- cmv %>% 
+  separate(`PtName ResultTrans`, c("PtName", "ResultTrans"), sep = " ")
 
 #Clinical data
 
-clinicalData <- read.csv("/data/clinicalData.csv")
+clinicalData <- read.csv("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/clinicalData.csv")
 
 #Bulk RNA-seq counts data 
 
-counts <- readRDS("/data/BulkData.rds")
+counts <- readRDS("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/BulkData.rds")
 
 #Bulk RNA-seq batch data
 
-batch_data <- read.csv("/data/BatchData.csv")
+batch_data <- read.csv("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/BatchData.csv")
 
 #T-cell flow data
 
-flow <- readRDS("/data/FlowData.rds")
+flow <- readRDS("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/FlowData.rds")
 
 #Toxicity metadata 
 
-tox <- read.csv("/data/AIpatient411complete.csv")
-tox <-tox[1:772,]
+tox <- read.csv("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/AIpatient411complete.csv")
 
 #Haematological data 
 
-bloods <- read.csv("/data/HaemData.csv")
+bloods <- read.csv("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/HaemData.csv")
 
 #UK Biobank data 
 
-Biobank <- load("/data/UKB.Rd")
+Biobank <- readRDS("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/UKB.Rds")
 
 #Single cell data for CD8+ T cells  
 
-cd8 <- readRDS("/data/scData.rds")
+cd8 <- readRDS("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/scData.rds")
 
 #Gene list used for calculation of cytotoxicity score- same as used in Watson et al. 2021 
 
-cytotoxicity <- read.csv("/data/BulkScores.csv")
+cytotoxicity <- read.csv("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/AcceptedNM/ORAdata/BulkScores.csv")
 
 clinicalData <- clinicalData %>%
   mutate(PtName = as.character(ID)) %>% 
@@ -229,7 +231,7 @@ x <- ggplot(subset(BloodsCMV, !is.na(cmv)), aes(x = cmv, y = Lymph_pre))+
 
 #Look at NLR which is associated with negative prognosis on immunotherapy 
 
-x <- ggplot(subset(BloodsCMV, !is.na(cmv)), aes(x = cmv, y = NLR))+
+x <- ggplot(subset(BloodsCMV, !is.na(cmv)), aes(x = cmv, y = NLR_pre))+
   ggbeeswarm::geom_quasirandom(aes(fill = cmv),
                                colour='grey30',
                                size=1.5,
@@ -433,7 +435,7 @@ rownames(FilteredMeta) <- FilteredMeta$sample
 #Subset counts data for baseline CD8+ T cell samples (C1_CD8_None)
 #Add Ensembl ids as rownames in this new dataset
 
-rownames(counts) <- counts$Gene
+#rownames(counts) <- counts$Gene
 SubsetCounts <- counts %>%
   dplyr::select(matches(c("C1_CD8_None")))
 rownames(SubsetCounts) <- rownames(counts)
@@ -903,7 +905,7 @@ rownames(FilteredMeta) <- FilteredMeta$sample
 
 SubsetCounts <- counts %>% 
   dplyr::select(matches(c("C2_CD8_None", "C1_CD8_None")))
-rownames(SubsetCounts) <- counts$Gene
+#rownames(SubsetCounts) <- counts$Gene
 
 #Metadata and counts data do not have matching samples. Match them and subset the matches 
 #see if the counts column names are in the rownames of the metadata
@@ -915,7 +917,7 @@ FilteredMeta <- subset(FilteredMeta, (sample %in% Matching))
 rownames(FilteredMeta) <- FilteredMeta$sample
 SubsetCounts <- SubsetCounts %>% 
   dplyr::select(contains(Matching))
-rownames(SubsetCounts) <- counts$Gene
+#rownames(SubsetCounts) <- counts$Gene
 
 #Not only do all the samples have to match in the metadata and the counts, but they have to be in the same order. Reorder the counts data 
 #dplyr::select metadata columns of interest
@@ -1851,7 +1853,7 @@ SurvNonMel <- clinicalData %>%
   mutate(patient = ID) %>% 
   filter(cancer != "Melanoma") %>% 
   filter(!Rx %in% c("CAPOX", "FOLFOX", "FOLFIRI", "FOLFOX+panitumumab")) %>% 
-  select(months_progression, months_death, progression, death_status, Rx, cmv, age, sex, BRAF_status, cancer, patient, Prior_BRAFi, subtype) %>% 
+  dplyr::select(months_progression, months_death, progression, death_status, Rx, cmv, age, sex, BRAF_status, cancer, patient, subtype) %>% 
   mutate(months_death = as.numeric(months_death)) %>% 
   mutate(months_progression = as.numeric(months_progression)) %>% 
   unique()
@@ -1867,16 +1869,16 @@ SurvToxNonMel <- SurvTox %>%
 
 ToxTypes <- SurvToxNonMel %>% 
   mutate(Adjuvant = ifelse(grepl("Adj", Rx), "Adjuvant intent", "Palliative intent")) %>% 
-  select(age, sex, cmv, cancer, patient, organ, Rx) %>% 
+  dplyr::select(age, sex, cmv, cancer, patient, organ, Rx) %>% 
   unique() %>% 
   mutate(CMVprotected = ifelse(organ %in% c("myalgia", "colitis", "pneumonitis"), 1, 0)) %>% 
   mutate(OtherTox = ifelse(!organ %in% c("myalgia", "colitis", "pneumonitis", "none"), 1, 0)) %>% 
   mutate(skin = ifelse(organ == "skin", 1, 0)) %>% 
-  select(-organ) %>% 
+  dplyr::select(-organ) %>% 
   unique()
 
 CMVprotected <- ToxTypes %>% 
-  select(-OtherTox) %>% 
+  dplyr::select(-OtherTox, -skin) %>% 
   mutate(CMVprotected = ifelse(patient == 409 | patient == 298, 1, CMVprotected)) %>% 
   unique()
 
@@ -1892,7 +1894,7 @@ fisher.test(CMVprotected$cmv, CMVprotected$CMVprotected, alternative = "less")
 # 0 
 
 OtherTox <- ToxTypes %>% 
-  select(-CMVprotected) %>% 
+  dplyr::select(-CMVprotected, -skin) %>% 
   mutate(OtherTox = ifelse(patient == 409 | patient == 298, 1, OtherTox)) %>% 
   unique()
 
@@ -1963,7 +1965,7 @@ rownames(FilteredMeta) <- FilteredMeta$sample
 #Subset counts data for baseline CD8+ T cell samples (C1_CD8_None)
 #Add Ensembl ids as rownames in this new dataset
 
-rownames(counts) <- counts$Gene
+#rownames(counts) <- counts$Gene
 SubsetCounts <- counts %>%
   dplyr::select(matches(c("C1_CD8_None")))
 rownames(SubsetCounts) <- rownames(counts)
@@ -2013,7 +2015,7 @@ all(colnames(CountsFinalC1) == rownames(FinalMetaC1))
 #CollecTRI is a comprehensie resource containing a curated collection of TFs and their transcriptional targets compiled from 12 different resources 
 #Retrieve the human version from OmniPath 
 
-Network <- readRDS("/data/TFnetwork.rds")
+Network <- readRDS("/Users/gusztavmilotay/Documents/Oxford_DPhil/Bioinformatics/1.CMVinteractionsAnalysis/Publications/NatureRevision/ForCodeCapsule2//TFnetwork.rds")
 
 #Filter for transcription factors expressed in CD8+ T cells 
 
@@ -2120,7 +2122,7 @@ rownames(FilteredMeta) <- FilteredMeta$sample
 
 SubsetCounts <- counts %>% 
   dplyr::select(matches(c("C2_CD8_None", "C1_CD8_None")))
-rownames(SubsetCounts) <- counts$Gene
+#rownames(SubsetCounts) <- counts$Gene
 
 #Metadata and counts data do not have matching samples. Match them and subset the matches 
 #see if the counts column names are in the rownames of the metadata
@@ -2132,7 +2134,7 @@ FilteredMeta <- subset(FilteredMeta, (sample %in% Matching))
 rownames(FilteredMeta) <- FilteredMeta$sample
 SubsetCounts <- SubsetCounts %>% 
   dplyr::select(contains(Matching))
-rownames(SubsetCounts) <- counts$Gene
+#rownames(SubsetCounts) <- counts$Gene
 
 #Not only do all the samples have to match in the metadata and the counts, but they have to be in the same order. Reorder the counts data 
 #dplyr::select metadata columns of interest
@@ -2237,7 +2239,7 @@ rownames(FilteredMeta) <- FilteredMeta$sample
 #Subset counts data for baseline CD8 T cell samples (C1_CD8_None format)
 #Add Ensembl ids as rownames in this new dataset- still unsure why R always removes rownames when you modify a dataframe
 
-rownames(counts) <- counts$Gene
+#rownames(counts) <- counts$Gene
 SubsetCounts <- counts %>%
   dplyr::select(matches(c("C1_CD8_None","C2_CD8_None")))
 rownames(SubsetCounts) <- rownames(counts)
@@ -2933,61 +2935,63 @@ ggsave("/results/Fig5d.pdf", plot = x, width = 8, height = 8)
 
 #Figure 5e- TBX21 expression in tumour bulk RNA-seq
 
+#Requires Riaz et al. data
+
 #TBX21 replication in Riaz data 
 
-Riaz <- read.table("/data/RiazCountMatrix.txt", sep = "\t", row.names = 1, header = T)
-RiazMeta <- fread('/data/RiazMeta.csv')
-
-Riaz <- Riaz %>% 
-  filter(!is.na(HUGO) & HUGO != "") %>% 
-  distinct(HUGO, .keep_all = TRUE)
-
-OnTreatment <- Riaz %>% dplyr::select(ends_with("_On"), ends_with("_Pre"))
-rownames(OnTreatment) <- Riaz$HUGO
-
-Meta <- as.data.frame(x = colnames(OnTreatment)) 
-Meta <- Meta %>% 
-  mutate(Samples = `colnames(OnTreatment)`) %>% 
-  dplyr::select(-`colnames(OnTreatment)`)
-
-NormCounts <- baselineNormaliseTransform(files = OnTreatment, samples = Meta)
-Subset <- NormCounts %>% 
-  filter(rownames(NormCounts) %in% c("TBX21")) %>% 
-  as.data.frame()
-SubsetWide <- as.data.frame(t(Subset))
-SubsetWide$Samples <- rownames(SubsetWide)
-Meta <- left_join(Meta, SubsetWide)
-Meta$Patient <- str_split(Meta$Samples, pattern='_', n=2, simplify = T)[,1]
-Meta$cycle <- str_split(Meta$Samples, pattern='_', n=2, simplify = T)[,2]
-OnTreatment <- Meta %>% filter(cycle=='On')
-
-RiazMeta <- left_join(RiazMeta, OnTreatment)
-
-RiazMeta <- RiazMeta %>% 
-  filter(Subtype=='CUTANEOUS') %>% 
-  mutate(TBX21 = as.numeric(TBX21))
-
-RiazMeta$outcome<-ifelse(RiazMeta$Response %in% c('PD'),'Progressive disease','Not progressive disease')
-
-RiazMeta <- RiazMeta %>%
-  mutate(outcome=factor(outcome, levels = c('Progressive disease','Not progressive disease'))) 
-
-x <- ggplot(RiazMeta, aes(x = outcome, y = TBX21))+
-  ggbeeswarm::geom_quasirandom(aes(fill = outcome),
-                               colour='grey30',
-                               size=1.5,
-                               pch=21,
-                               alpha=0.6,
-                               width=0.075)+
-  geom_boxplot(colour = "grey30", aes(fill = outcome), alpha=0.5, width = 0.5)+
-  scale_fill_brewer(palette = 13)+
-  theme(legend.position = "none")+
-  xlab("Clinical outcome")+
-  ylab(paste("Normalised TBX21 expression"))+
-  #stat_compare_means(method = "wilcox", label.x.npc = "center", comparisons = list(c("Progressive disease", "Not progressive disease")), size = 5)
-  stat_compare_means(label = "p.signif", size = 7, comparisons = list(c("Progressive disease", "Not progressive disease")))
-
-ggsave("/results/Fig5e.pdf", plot = x, width = 8, height = 8)
+# Riaz <- read.table("/data/RiazCountMatrix.txt", sep = "\t", row.names = 1, header = T)
+# RiazMeta <- fread('/data/RiazMeta.csv')
+# 
+# Riaz <- Riaz %>% 
+#   filter(!is.na(HUGO) & HUGO != "") %>% 
+#   distinct(HUGO, .keep_all = TRUE)
+# 
+# OnTreatment <- Riaz %>% dplyr::select(ends_with("_On"), ends_with("_Pre"))
+# rownames(OnTreatment) <- Riaz$HUGO
+# 
+# Meta <- as.data.frame(x = colnames(OnTreatment)) 
+# Meta <- Meta %>% 
+#   mutate(Samples = `colnames(OnTreatment)`) %>% 
+#   dplyr::select(-`colnames(OnTreatment)`)
+# 
+# NormCounts <- baselineNormaliseTransform(files = OnTreatment, samples = Meta)
+# Subset <- NormCounts %>% 
+#   filter(rownames(NormCounts) %in% c("TBX21")) %>% 
+#   as.data.frame()
+# SubsetWide <- as.data.frame(t(Subset))
+# SubsetWide$Samples <- rownames(SubsetWide)
+# Meta <- left_join(Meta, SubsetWide)
+# Meta$Patient <- str_split(Meta$Samples, pattern='_', n=2, simplify = T)[,1]
+# Meta$cycle <- str_split(Meta$Samples, pattern='_', n=2, simplify = T)[,2]
+# OnTreatment <- Meta %>% filter(cycle=='On')
+# 
+# RiazMeta <- left_join(RiazMeta, OnTreatment)
+# 
+# RiazMeta <- RiazMeta %>% 
+#   filter(Subtype=='CUTANEOUS') %>% 
+#   mutate(TBX21 = as.numeric(TBX21))
+# 
+# RiazMeta$outcome<-ifelse(RiazMeta$Response %in% c('PD'),'Progressive disease','Not progressive disease')
+# 
+# RiazMeta <- RiazMeta %>%
+#   mutate(outcome=factor(outcome, levels = c('Progressive disease','Not progressive disease'))) 
+# 
+# x <- ggplot(RiazMeta, aes(x = outcome, y = TBX21))+
+#   ggbeeswarm::geom_quasirandom(aes(fill = outcome),
+#                                colour='grey30',
+#                                size=1.5,
+#                                pch=21,
+#                                alpha=0.6,
+#                                width=0.075)+
+#   geom_boxplot(colour = "grey30", aes(fill = outcome), alpha=0.5, width = 0.5)+
+#   scale_fill_brewer(palette = 13)+
+#   theme(legend.position = "none")+
+#   xlab("Clinical outcome")+
+#   ylab(paste("Normalised TBX21 expression"))+
+#   #stat_compare_means(method = "wilcox", label.x.npc = "center", comparisons = list(c("Progressive disease", "Not progressive disease")), size = 5)
+#   stat_compare_means(label = "p.signif", size = 7, comparisons = list(c("Progressive disease", "Not progressive disease")))
+# 
+# ggsave("/results/Fig5e.pdf", plot = x, width = 8, height = 8)
 
 #p= 0.036
 
@@ -3051,36 +3055,63 @@ AllCancer <- SurvivalAllCancer %>%
 #4425 CMV+
 #3460 CMV-
 
-Biobank <- allmat %>% 
-  mutate(cmv = ifelse(cmv == 2, "CMV+", 
-                      ifelse(cmv == 1, "CMV-", NA)))
+#For pre-processing Biobank data 
 
-Biobank <- Biobank %>% 
-  mutate(CMV = ifelse(cmv == "CMV+", 1, 0)) %>% 
-  mutate(cancer = "False") %>% 
-  mutate(status = "Healthy") %>% 
-  mutate(Status = "Healthy") %>% 
-  dplyr::select(-cmv) %>% 
-  filter(!is.na(age))
-
-#Bind Biobank and cancer cohort data and remove patients outside the recruitment age for the Biobank (40-70 years old)
-
-HealthyCancerCombined <- rbind(AllCancer, Biobank)
-HealthyCancerCombined <- HealthyCancerCombined %>% 
-  filter(age >= 40 & age <= 70) %>% 
-  mutate(HealthyWT = ifelse(status == "Healthy", "Healthy",
-                            ifelse(status == "Mel-Adj", "Adjuvant Melanoma",
-                                   ifelse(status == "MM-WT", "Wild-type Metastatic",
-                                          ifelse(status == "MM-Mut", "Mutant Metastatic",NA)))))
+# Biobank <- allmat %>% 
+#   mutate(cmv = ifelse(cmv == 2, "CMV+", 
+#                       ifelse(cmv == 1, "CMV-", NA)))
+# 
+# Biobank <- Biobank %>% 
+#   mutate(CMV = ifelse(cmv == "CMV+", 1, 0)) %>% 
+#   mutate(cancer = "False") %>% 
+#   mutate(status = "Healthy") %>% 
+#   mutate(Status = "Healthy") %>% 
+#   dplyr::select(-cmv) %>% 
+#   filter(!is.na(age))
+# 
+# #Bind Biobank and cancer cohort data and remove patients outside the recruitment age for the Biobank (40-70 years old)
+# 
+# HealthyCancerCombined <- rbind(AllCancer, Biobank)
+# HealthyCancerCombined <- HealthyCancerCombined %>% 
+#   filter(age >= 40 & age <= 70) %>% 
+#   mutate(HealthyWT = ifelse(status == "Healthy", "Healthy",
+#                             ifelse(status == "Mel-Adj", "Adjuvant Melanoma",
+#                                    ifelse(status == "MM-WT", "Wild-type Metastatic",
+#                                           ifelse(status == "MM-Mut", "Mutant Metastatic",NA)))))
 
 #Compute the OR of CMV seropositivity in cancer groups compared to healthy donors 
+
+AllCancer2 <- AllCancer %>% 
+  filter(age >= 40 & age <= 70) %>% 
+    mutate(HealthyWT = ifelse(status == "Healthy", "Healthy",
+                              ifelse(status == "Mel-Adj", "Adjuvant Melanoma",
+                                     ifelse(status == "MM-WT", "Wild-type Metastatic",
+                                            ifelse(status == "MM-Mut", "Mutant Metastatic",NA))))) %>% 
+  group_by(CMV, HealthyWT) %>% 
+  summarise(Freq = n()) %>%
+  ungroup() %>% 
+  filter(!is.na(CMV)) %>% 
+  mutate(cmv = ifelse(CMV == 1, "CMV+", "CMV-")) %>% 
+  dplyr::select(cmv, HealthyWT, Freq, -CMV)
+
+Biobank$HealthyWT <- "Healthy"
+
+Biobank2 <- Biobank %>% 
+  dplyr::select(-centre) %>% 
+  group_by(cmv, HealthyWT) %>% 
+  summarise(Freq = sum(Freq))
+
+HealthyCancerCombined <- rbind(Biobank2, AllCancer2)
 
 #Metastatic BRAF wild-type 
 
 HealthyMMwildtype <- HealthyCancerCombined %>% 
-  filter(HealthyWT != "Adjuvant Melanoma" & HealthyWT != "Mutant Metastatic")
+  filter(HealthyWT != "Adjuvant Melanoma" & HealthyWT != "Mutant Metastatic" & !is.na(HealthyWT))
 
-fisherMMwildtype <- fisher.test(HealthyMMwildtype$CMV, HealthyMMwildtype$HealthyWT)
+table_matrix <- xtabs(Freq ~ cmv + HealthyWT, data = HealthyMMwildtype)
+
+#fisherMMwildtype <- fisher.test(HealthyMMwildtype$cmv, HealthyMMwildtype$HealthyWT)
+fisherMMwildtype <- fisher.test(table_matrix)
 oddsMMwildtype <- fisherMMwildtype$estimate
 confIntMMwildtype <- fisherMMwildtype$conf.int
 pvalMMwildtype <- fisherMMwildtype$p.value
@@ -3088,9 +3119,12 @@ pvalMMwildtype <- fisherMMwildtype$p.value
 #Adjuvant melanoma 
 
 HealthyAdj <- HealthyCancerCombined %>% 
-  filter(HealthyWT != "Wild-type Metastatic" & HealthyWT != "Mutant Metastatic")
+  filter(HealthyWT != "Wild-type Metastatic" & HealthyWT != "Mutant Metastatic" & !is.na(HealthyWT))
 
-fisherAdj <- fisher.test(HealthyAdj$CMV, HealthyAdj$HealthyWT)
+table_matrix <- xtabs(Freq ~ cmv + HealthyWT, data = HealthyAdj)
+
+#fisherAdj <- fisher.test(HealthyAdj$CMV, HealthyAdj$HealthyWT)
+fisherAdj <- fisher.test(table_matrix)
 oddsAdj <- fisherAdj$estimate
 confIntAdj <- fisherAdj$conf.int
 pvalAdj <- fisherAdj$p.value
@@ -3098,17 +3132,28 @@ pvalAdj <- fisherAdj$p.value
 #Metastatic BRAF mutant 
 
 HealthyMMmutant <- HealthyCancerCombined %>% 
-  filter(HealthyWT != "Adjuvant Melanoma" & HealthyWT != "Wild-type Metastatic")
+  filter(HealthyWT != "Adjuvant Melanoma" & HealthyWT != "Wild-type Metastatic" & !is.na(HealthyWT))
 
-fisherMMmutant <- fisher.test(HealthyMMmutant$CMV, HealthyMMmutant$HealthyWT)
+table_matrix <- xtabs(Freq ~ cmv + HealthyWT, data = HealthyMMmutant)
+
+#fisherMMmutant <- fisher.test(HealthyMMmutant$CMV, HealthyMMmutant$HealthyWT)
+fisherMMmutant <- fisher.test(table_matrix)
 oddsMMmutant <- fisherMMmutant$estimate
 confIntMMmutant <- fisherMMmutant$conf.int
 pvalMMmutant <- fisherMMmutant$p.value
 
-AllMetaMel <- HealthyCancerCombined %>% 
-  filter(Status != "Other")
+AllMetaMel <- HealthyCancerCombined
+AllMetaMel$Status <- "Metastatic"
+AllMetaMel <- AllMetaMel %>% 
+  mutate(Status = ifelse(HealthyWT == "Adjuvant Melanoma", "Adj",
+                         ifelse(HealthyWT == "Healthy", "Healthy", Status))) %>% 
+  mutate(Status = ifelse(is.na(Status), "Metastatic", Status)) %>% 
+  filter(Status != "Adj")
 
-fisherMel <- fisher.test(AllMetaMel$CMV, AllMetaMel$Status)
+table_matrix <- xtabs(Freq ~ cmv + Status, data = AllMetaMel)
+
+#fisherMel <- fisher.test(AllMetaMel$CMV, AllMetaMel$Status)
+fisherMel <- fisher.test(table_matrix)
 oddsMel <- fisherMel$estimate
 confIntMel <- fisherMel$conf.int
 pvalMel <- fisherMel$p.value
@@ -3174,72 +3219,74 @@ ggsave("/results/Fig6a.pdf", plot = x, width = 8, height = 8)
 
 ################################################################################
 
+#Requires raw UK biobank data 
+
 #Check validity by age and sex matching 
 
-MetastaticMelanoma <- SurvivalAllCancer %>% 
-  filter(PtName != "25") %>% 
-  filter(Rx != "Ipilimumab" & Rx != "RelatNivo") %>% 
-  mutate(CMV = ifelse(cmv == "CMV+", 1,
-                                          ifelse(cmv == 'CMV-', 0, NA))) %>% 
-  mutate(status = ifelse(Cancer == "Non-Melanoma", "Non-melanoma",
-                         ifelse(Cancer == "Melanoma" & intent == "adjuvant", "Mel-Adj",
-                                ifelse(Cancer == "Melanoma" & intent == "palliative", "MM-Mel", NA)))) %>% 
-  mutate(sex = ifelse(sex == 1, "Male", "Female")) %>% 
-  mutate(assessment_centre = "None") %>% 
-  dplyr::select(age, CMV, status, assessment_centre, sex) %>% 
-  filter(age >= 40 & age <= 70) %>% 
-  filter(status == "MM-Mel") %>% 
-  mutate(cancer = "Cancer") %>% 
-  filter(!is.na(age) & !is.na(CMV))
-
-Biobank2 <- Biobank %>% 
-  dplyr::select(age, CMV, status, assessment_centre, sex, cancer)
-AgeMatched <- rbind(Biobank2, MetastaticMelanoma)
-AgeMatched <- AgeMatched %>% 
-  mutate(Status = ifelse(status == "Healthy", 0, 1))
-
-#Perform age and sex matching with multiple iterations are there will be more than one match for each patient in the biobank
-
-Iterations <- 1000
-
-#Store p-values from each iteration
-
-Pvals <- numeric(Iterations)
-
-#Create lists to store outputs
-
-MatchedData <- vector("list", Iterations)
-PermutationResults <- vector("list", Iterations)
-
-#Perform the repeated matching and permutation test
-
-set.seed(123)
-
-for (i in 1:Iterations) {
-  
-  #Use MatchIt to store match Biobank-patient matching according to age and sex 
-  
-  MatchOutput <- matchit(Status ~ age + sex, data = AgeMatched, method = "nearest", ratio = 1)
-  
-  #Extract matched data
-  
-  MatchedData[[i]] <- match.data(MatchOutput)
-  
-  MatchedData[[i]]$CMV <- as.factor(MatchedData[[i]]$CMV)
-  
-  #Perform Fisher-Pitman permutation test
-  
-  PermutationResults[[i]] <- independence_test(CMV ~ Status, data = MatchedData[[i]], distribution = approximate(nresample = 10000))
-}
-
-#Aggregate the results by taking the median p-value over 1000 iterations
-
-Pvals <- sapply(PermutationResults, function(x) pvalue(x))
-
-FinalResult <- median(Pvals)
-
-#p = 0.0053
-#Range 0.0036 0.0078
+# MetastaticMelanoma <- SurvivalAllCancer %>% 
+#   filter(PtName != "25") %>% 
+#   filter(Rx != "Ipilimumab" & Rx != "RelatNivo") %>% 
+#   mutate(CMV = ifelse(cmv == "CMV+", 1,
+#                                           ifelse(cmv == 'CMV-', 0, NA))) %>% 
+#   mutate(status = ifelse(Cancer == "Non-Melanoma", "Non-melanoma",
+#                          ifelse(Cancer == "Melanoma" & intent == "adjuvant", "Mel-Adj",
+#                                 ifelse(Cancer == "Melanoma" & intent == "palliative", "MM-Mel", NA)))) %>% 
+#   mutate(sex = ifelse(sex == 1, "Male", "Female")) %>% 
+#   mutate(assessment_centre = "None") %>% 
+#   dplyr::select(age, CMV, status, assessment_centre, sex) %>% 
+#   filter(age >= 40 & age <= 70) %>% 
+#   filter(status == "MM-Mel") %>% 
+#   mutate(cancer = "Cancer") %>% 
+#   filter(!is.na(age) & !is.na(CMV))
+# 
+# Biobank2 <- Biobank %>% 
+#   dplyr::select(age, CMV, status, assessment_centre, sex, cancer)
+# AgeMatched <- rbind(Biobank2, MetastaticMelanoma)
+# AgeMatched <- AgeMatched %>% 
+#   mutate(Status = ifelse(status == "Healthy", 0, 1))
+# 
+# #Perform age and sex matching with multiple iterations are there will be more than one match for each patient in the biobank
+# 
+# Iterations <- 1000
+# 
+# #Store p-values from each iteration
+# 
+# Pvals <- numeric(Iterations)
+# 
+# #Create lists to store outputs
+# 
+# MatchedData <- vector("list", Iterations)
+# PermutationResults <- vector("list", Iterations)
+# 
+# #Perform the repeated matching and permutation test
+# 
+# set.seed(123)
+# 
+# for (i in 1:Iterations) {
+#   
+#   #Use MatchIt to store match Biobank-patient matching according to age and sex 
+#   
+#   MatchOutput <- matchit(Status ~ age + sex, data = AgeMatched, method = "nearest", ratio = 1)
+#   
+#   #Extract matched data
+#   
+#   MatchedData[[i]] <- match.data(MatchOutput)
+#   
+#   MatchedData[[i]]$CMV <- as.factor(MatchedData[[i]]$CMV)
+#   
+#   #Perform Fisher-Pitman permutation test
+#   
+#   PermutationResults[[i]] <- independence_test(CMV ~ Status, data = MatchedData[[i]], distribution = approximate(nresample = 10000))
+# }
+# 
+# #Aggregate the results by taking the median p-value over 1000 iterations
+# 
+# Pvals <- sapply(PermutationResults, function(x) pvalue(x))
+# 
+# FinalResult <- median(Pvals)
+# 
+# #p = 0.0053
+# #Range 0.0036 0.0078
 
 ################################################################################
 #FIGURE 6b- Age according to CMV status in Melanoma and Non-Melanoma 
